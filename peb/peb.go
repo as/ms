@@ -34,11 +34,15 @@ func init() {
 //
 // Most of the structures in the PEB are mutable
 type PEB struct {
-	_        [2]byte
+	SharedAddr byte
+	ExecOptions byte
 	Debugged byte
-	_        [1]byte
-	_        [2]byte
-	_        [18]byte // amd64 only?
+	_        byte
+	//_        [2]byte
+	//_        [18]byte // amd64 only?
+	BaseAddr uintptr
+	Mutex     uintptr
+	
 	Loader   *Loader
 	Params   *Params
 	_        [104]byte
@@ -89,8 +93,20 @@ type Module struct {
 
 // Params contains process startup state.
 type Params struct {
-	_ [16]byte
-	_ [11]uintptr
+	AllocSize uint32
+	Size uint32
+	Flags uint32
+	DebugFlags uint32
+	//_ [16]byte
+
+	Console uintptr
+	PGroup uint32
+	Stdin, Stdout, Stderr uintptr // careful, these arent 0, 1, and 2
+	CWD BStr
+	CWDHandle uintptr
+	DLLPath BStr
+	
+	//_ [11]uintptr
 
 	// This is the path to the executable. Altering this
 	// confuses naive anti-virus software and even Mark Russinovich's
@@ -99,20 +115,22 @@ type Params struct {
 	// For interesting behavior, change it to a remote share and look
 	// at the resulting network traffic on ports 139 or 445.
 	//
-	ImagePathName LPWStr
-
-	// The 'Unknown' contains the ImagePath's length
-	// my guess is it also contains information about
-	// the command line arguments.
-	//
-	// Mutant COM Bstr?
-	//
-	Unknown uintptr
-
+	ImagePathName BStr
+	
 	// Mutable argument vector
-	CommandLine LPWStr
+	CommandLine BStr
+	
+	// No length prefixes
+	Env LPWStr
+
+	
 }
 
+type BStr struct{
+	Len uint16
+	Cap uint16
+	LPWStr
+}
 // LPWstr is a pointer to a wide string. Internally, P either points
 // to the starting index of a []uint16, or is nil.
 type LPWStr struct {
