@@ -52,26 +52,39 @@ type PEB struct {
 // Loader contains the state of Window's image loader. It mainly serves as
 // a pointer to the head of a linked list of table entries.
 type Loader struct {
-	_       [8]byte
+	Size    uint32
+	Done    uint32
 	_       [1]uintptr // if no work try 3
-	Next, _ *TableEntry
+	Order
 }
 
+type Link struct{
+	Next, Prev *Module
+}
+type Order struct{
+	ByLoad	Link
+	ByMemory	Link
+	ByInit	Link
+}
 // TableEntry contains information about loaded modules. This information
 // is owned by the running process and remains mutable throughout the process's
 // lifetime.
-type TableEntry struct {
-	_             [2]uintptr
-	Next, Prev    *TableEntry
-	_             [2]uintptr
+type Module struct {
+	Order
 	DLLBase       uintptr
 	EntryPoint    uintptr
-	_             [1]uintptr
-	FullDLLName   LPWStr
-	_             [8]byte
-	_             [3]uintptr
+	ImageSize     uint32
+	FullDLL   LPWStr
+	BaseDLL   LPWStr
+	Flags     uint
+	NLoaded	  uint16
+	TLSIndex  uint16
+	Section   uintptr
 	CheckSum      uint
 	TimeDateStamp uint
+	Ctx uintptr
+	_ uintptr
+	_ [3]uintptr
 }
 
 // Params contains process startup state.
