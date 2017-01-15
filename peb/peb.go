@@ -38,11 +38,8 @@ type PEB struct {
 	ExecOptions byte
 	Debugged byte
 	_        byte
-	//_        [2]byte
-	//_        [18]byte // amd64 only?
 	BaseAddr uintptr
 	Mutex     uintptr
-	
 	Loader   *Loader
 	Params   *Params
 	_        [104]byte
@@ -62,20 +59,26 @@ type Loader struct {
 	Order
 }
 
+// Order is a three-tiered list of modules. Only ByMemory is documented
 type Order struct{
 	ByLoad	Link
 	ByMemory	Link
 	ByInit	Link
 }
 
+// Link points to the previous and next module in the list
 type Link struct{
 	Next, Prev *Module
 }
 
 // Module contains information about loaded modules. This information
-// is owned by the running process and remains mutable throughout the process's
-// lifetime.
+// is owned by the running process and remains mutable throughout the
+// process's lifetime.
 type Module struct {
+	// The order is a three piece linked list. In each piece, links have pointers to the
+	// next and previous Module. The ByMemory link traverses through the list in memory
+	// order. The other two links are undocumented (ByLoad and ByInit is an educated guess
+	// and might not reflect reality.
 	Order
 	DLLBase       uintptr
 	EntryPoint    uintptr
@@ -104,8 +107,15 @@ type Params struct {
 	Console uintptr
 	PGroup uint32
 	Stdin, Stdout, Stderr uintptr // careful, these arent 0, 1, and 2
+	
+	// The name of the current working directory. A os.Chdir() changes this
+	// value in the PEB, as well as writing to the variable directly.
 	CWD BStr
+	
+	// The handle to the current directory; effectively obtains a lock on
+	// the directory so it can't be deleted underneath the process
 	CWDHandle uintptr
+	
 	DLLPath BStr
 	
 	//_ [11]uintptr
@@ -129,11 +139,14 @@ type Params struct {
 	
 }
 
+// BStr is a length and cap prefixed pointer to a wide string. This isn't
+// the same as a COM Bstr (which has a int Len and no Cap)
 type BStr struct{
 	Len uint16
 	Cap uint16
 	LPWStr
 }
+
 // LPWstr is a pointer to a wide string. Internally, P either points
 // to the starting index of a []uint16, or is nil.
 type LPWStr struct {
