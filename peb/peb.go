@@ -62,15 +62,17 @@ type Loader struct {
 	Order
 }
 
-type Link struct{
-	Next, Prev *Module
-}
 type Order struct{
 	ByLoad	Link
 	ByMemory	Link
 	ByInit	Link
 }
-// TableEntry contains information about loaded modules. This information
+
+type Link struct{
+	Next, Prev *Module
+}
+
+// Module contains information about loaded modules. This information
 // is owned by the running process and remains mutable throughout the process's
 // lifetime.
 type Module struct {
@@ -78,8 +80,8 @@ type Module struct {
 	DLLBase       uintptr
 	EntryPoint    uintptr
 	ImageSize     uint32
-	FullDLL   LPWStr
-	BaseDLL   LPWStr
+	FullDLL   BStr
+	BaseDLL   BStr
 	Flags     uint
 	NLoaded	  uint16
 	TLSIndex  uint16
@@ -120,8 +122,9 @@ type Params struct {
 	// Mutable argument vector
 	CommandLine BStr
 	
-	// No length prefixes
-	Env LPWStr
+	// Supposedly points to the environment, but probabilistic crashes
+	// occur when dereferencing the pointer inside...
+	Env uintptr	
 
 	
 }
@@ -139,34 +142,52 @@ type LPWStr struct {
 
 func (t PEB) String() string {
 	s := fmt.Sprintf("===PEB===\n")
+	s  = fmt.Sprintf("=Loader=\n\n")
 	s += fmt.Sprintln(t.Loader)
+	
+	s  = fmt.Sprintf("\n=Params=\n\n")
 	s += fmt.Sprintln(t.Params)
+	
 	s += fmt.Sprintln("Session", t.Session)
 	return s
 }
 func (t Loader) String() string {
-	s := fmt.Sprintf("\n===Loader===\n")
-	s += fmt.Sprint("Entry:")
-	if t.Next != nil {
-		s += fmt.Sprintln(t.Next)
-	} else {
-		s += fmt.Sprintln("<nil>")
+	return fmt.Sprintln(&(t.Order))
+}
+func (l *Order) String() string{
+	s := ""
+	mod := l.ByMemory.Next
+	var pmod *Module
+	for i := 0; i < 2; i++{
+		fmt.Printf("sp=%p next=%p\n",  pmod, mod)
+		s += fmt.Sprintln(mod)
+		pmod = mod
+		mod = mod.Order.ByMemory.Next
 	}
 	return s
 }
-func (t TableEntry) String() string {
-	s := fmt.Sprintf("	%#v", t)
-	if t.Next != nil {
-		s += fmt.Sprintf("\n%s", t.Next)
+
+func (m *Module) String() string{
+	fmt.Printf("%q\n", m.FullDLL)
+	if m == nil{
+		return fmt.Sprint("<nil>")
 	}
-	return s
+	return fmt.Sprintf("%#v", m.FullDLL)
 }
+
 func (p Params) String() string {
 	s := fmt.Sprintf("===Params===\n")
-	s += fmt.Sprintf("Unknown: %0x\n", p.Unknown)
+	//s += fmt.Sprintf("Unknown: %0x\n", p.Unknown)
+	s += fmt.Sprintf("CWD: %q\n", p.CWD)
+	s += fmt.Sprintf("DLLPath: %q\n", p.DLLPath)
 	s += fmt.Sprintf("ImagePathName: %q\n", p.ImagePathName)
 	s += fmt.Sprintf("CommandLine: %q\n", p.CommandLine)
+	// s += fmt.Sprintf("Env: 0x%0x\n", uintptr(unsafe.Pointer(p.Env.P)))
 	return s
+}
+
+func (b BStr) String() string{
+	return fmt.Sprintf("(len=%d cap=%d) %s", b.Len, b.Cap, b.LPWStr)
 }
 
 func (l LPWStr) String() string {
