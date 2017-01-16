@@ -42,12 +42,89 @@ type PEB struct {
 	Mutex     uintptr
 	Loader   *Loader
 	Params   *Params
-	_        [104]byte
-	_        [52]uintptr
-	_        uintptr
-	_        [128]byte
-	_        uintptr
-	Session  uint
+	SubSystem uintptr
+	Heap      uintptr
+	FastLock  uintptr
+	Thunks    uintptr
+	
+	// Image File Execution Options: This value is in the PE file specifying
+	// the debugger to launch along with the program
+	IFEOKey   uintptr
+	_         uintptr
+	Callbacks uintptr
+	_ uint32
+	_ uint32
+	APISetMap uintptr
+	
+	TLS TLS
+	
+	SharedMemoryBase uintptr
+	HotpatchInfo uintptr
+	StaticServerData uintptr
+	OemCodePage uintptr
+	AnsiCodePage uintptr
+	OEMCodePage uintptr
+	UnicodeCaseTable uintptr
+	
+	NCpus uint32
+	NTGlobal uint32
+	
+	LockTimeout int64
+	
+	HeapReserve uint32
+	HeapCommit uint32
+	HeapFree uint32
+	HeapFreeBlock uint32
+	
+	NHeaps uint32
+	MaxHeaps uint32
+	HeapList uintptr
+	
+	GDISharedHandles uintptr
+	PreInitProc uintptr
+	GDIAttrList uintptr
+	
+	LoaderLock uintptr
+	
+	OSInfo OSInfo
+	Subsystem Subsystem
+	Affinity *uint32
+	GDIHandleBuffer [60]byte
+	PostInitProc uintptr
+	
+	TLSExpansion TLSExpansion
+	
+	Session  uint32
+	
+	CSDVersion BStr
+}
+
+type AppCompat struct{
+	Flags uint64
+	User  uint64
+	Shim uintptr
+	Info uintptr
+}
+
+type TLS struct{
+	Expansions uint32
+	Bitmap uintptr
+	Bits [2]byte
+}
+type TLSExpansion struct{
+	Bitmap uintptr
+	Bits [32]byte
+}
+
+type OSInfo struct{
+	Maj, Min uint32
+	Build uint32
+	Platform uint32
+}
+
+type Subsystem struct{
+	ID uint32
+	Maj, Min uint32
 }
 
 // Loader contains the state of Window's image loader. It mainly serves as
