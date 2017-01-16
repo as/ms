@@ -21,6 +21,8 @@ func toslice(p *uint16) []uint16{
 	return (*(*[65536]uint16) (unsafe.Pointer(p)))[:]
 }
 
+// dupargs make a copy of the program arguments, if the PEB
+// is overwritten, this copy will not be altered
 func dupargs(a []string) []string{
 	b := make([]string, len(a))
 	for i, v := range a{
@@ -29,6 +31,7 @@ func dupargs(a []string) []string{
 	return b
 }
 
+// bcopy copies s into p; there are no underlying bounds checks
 func bcopy(p peb.BStr, s string){
 	x := toslice(p.P)
 	copy(x, wide([]byte(s)))			
@@ -66,11 +69,14 @@ func printPEB(){
 	fmt.Printf("%s", peb.Peb.String())
 }
 
+// nullify clears the Params and Loader pointers in the PEB. This
+// retards the Visual Studio debugger.
 func nullify(){
 	peb.Peb.Params = nil
 	peb.Peb.Loader = nil
 }
 
+// envBlank clears the environment variables in the process
 func envBlank(){
 	v := "COMPUTERNAME"
 	fmt.Println(v, os.Getenv(v))
