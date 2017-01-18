@@ -1,0 +1,4 @@
+
+//+build windows
+package nt
+
