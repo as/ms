@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"image"
-	"log"
+
 	"runtime"
 	"unsafe"
 //	"io/ioutil"
@@ -82,15 +82,20 @@ func Capture(scr int, win int, r image.Rectangle) (img image.Image, err error) {
 	}
 	bi.Size = 40
 	bmpsize := int(((bi.Width*int32(bi.BPP) + 31) / 32) * 4 * bi.Height)
-	fucker, e := GlobalAlloc(0x0042, bmpsize)
-	no(e)
-	fuckerEX, e := GlobalLock(fucker)
-	no(e)
-	if err = GetDIBits(screen, screenbmp, uint32(0), uint32(r.Dy()), uintptr(fuckerEX), uintptr(unsafe.Pointer(&bi)), RGBColors); err != nil {
+	gh, err := GlobalAlloc(0x0042, bmpsize)
+	if err != nil{
+		return nil, fmt.Errorf("GlobalAlloc: %s", err)
+	}
+	defer GlobalFree(gh)
+	hand, err := GlobalLock(gh)
+	if err != nil{
+		return nil, fmt.Errorf("GlobalLock: %s", err)
+	}
+	if err = GetDIBits(screen, screenbmp, uint32(0), uint32(r.Dy()), uintptr(hand), uintptr(unsafe.Pointer(&bi)), RGBColors); err != nil {
 		return nil, fmt.Errorf("GetDIBits: %s", err)
 	}
-	x := (*(*[1<<31 - 1]byte)(unsafe.Pointer(fuckerEX)))[:bmpsize]
-	GlobalUnlock(fucker)
+	x := (*(*[1<<31 - 1]byte)(unsafe.Pointer(hand)))[:bmpsize]
+	GlobalUnlock(gh)
 	hdr := BitmapFileHeader{Type: 0x4D42}
 	hdr.DataAt = uint32(unsafe.Sizeof(bi)) + uint32(unsafe.Sizeof(hdr)) - 2
 	hdr.Size = uint32(uint32(bmpsize) + hdr.DataAt)
@@ -100,14 +105,7 @@ func Capture(scr int, win int, r image.Rectangle) (img image.Image, err error) {
 	bi.BPP=24
 	buf.Write(x)
 	//ioutil.WriteFile("test.bmp", buf.Bytes(), 0775)
-	
 	return bmp.Decode(buf)
-}
-
-func no(err error) {
-	if err != nil {
-		log.Fatalln(err)
-	}
 }
 
 //go:generate go run $GOROOT/src/syscall/mksyscall_windows.go -output zscreen.go screen.go

@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 	"strconv"
-
+	"image"
 	"github.com/as/screen"
 )
 
@@ -22,7 +22,7 @@ func main() {
 		no(err)
 	}
 
-	fmt.Println(screen.Capture(scr, win, 0, 0, 1024, 768))
+	fmt.Println(screen.Capture(scr, win, image.Rect(0, 0, 1024, 768)))
 }
 
 func no(err error) {
