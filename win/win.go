@@ -10,7 +10,7 @@ func Rect() (image.Rectangle, bool) { return rect() }
 // ClientRect returns the sub-rectangle of the client area (the intersection of
 // the window border and the window). The bounds are relative to the window bounds,
 // so this rectangle remains constant if the window is moved without resize
-func ClientRect() (image.Rectangle, bool) { return clientRect() }
+func ClientRect() (image.Rectangle, bool) { r, err :=  clientRect(); return r, err == nil }
 
 // ClientAbs returns the absolute client area.
 func ClientAbs() image.Rectangle {
