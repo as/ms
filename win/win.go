@@ -11,7 +11,7 @@ func Rect() (image.Rectangle, bool) { return rect() }
 // the window border and the window). The bounds are relative to the window bounds,
 // so this rectangle remains constant if the window is moved without resize
 func ClientRect() (image.Rectangle, bool) {
-	r, _ :=  clientRect()
+	r, _ := clientRect()
 	return r, false
 }
 

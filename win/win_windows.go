@@ -75,7 +75,6 @@ func clientRect() (image.Rectangle, bool) {
 }
 func active() uintptr {
 	w := FromPID(os.Getpid())
-	fmt.Printf("active: pid=%d w=%d\n", os.Getpid(), w)
 	if len(w) == 0 {
 		return 0
 	}
@@ -238,11 +237,9 @@ var callback = syscall.NewCallback(func(h syscall.Handle, p uintptr) uintptr {
 
 func fromPID(pid int) (wids []uintptr) {
 	b := &box{pid, make([]uintptr, 0, 1024)}
-	fmt.Println(b)
 	syscall.Syscall(pEnumWindows.Addr(), 2, callback, uintptr(unsafe.Pointer(b)), 0)
 	wids = make([]uintptr, len(b.wids))
 	copy(wids, b.wids)
-	fmt.Println(b)
 	return wids
 }
 
