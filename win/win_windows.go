@@ -1,13 +1,72 @@
 package win
 
 import (
+	"errors"
 	"fmt"
 	"image"
-	"os"
 	"strings"
 	"syscall"
 	"unsafe"
 )
+
+var (
+	ErrNoWindows  = errors.New("pid has no windows")
+	ErrZeroWindow = errors.New("zero window")
+	ErrBadRect    = errors.New("bad rectangle")
+)
+
+// Window is a Windows GUI window
+type Window uintptr
+
+// Open opens a process and returns its first window, if the process
+// has no windows, ErrNoWindow is returned
+func Open(pid int) (Window, error) {
+	w, err := FromPID(pid)
+	if err != nil {
+		return 0, err
+	}
+	if len(w) == 0 {
+		return 0, ErrNoWindows
+	}
+	w0 := Window(w[0])
+	if w0 == 0 {
+		return 0, ErrZeroWindow
+	}
+	return w0, nil
+}
+
+// Client returns the Window's client area. The client area is the
+// rectangle that can be painted by an application and excludes
+// the window border. The value uses absolute coordinates and
+// returns a canonicalized rectangle.
+func (w Window) Client() (image.Rectangle, error) {
+	r32 := rect32{}
+	ret, _, err := getClientRect.Call(uintptr(w), uintptr(unsafe.Pointer(&r32)))
+	if ret == 0 {
+		return image.ZR, err
+	}
+	wr, err := w.Bounds()
+	if err != nil {
+		return image.ZR, err
+	}
+	cr := r32.Rect()
+	return wr.Add(Border(wr, cr)), nil
+}
+
+// Client returns window bounds. This includes the border. The value
+// uses absolute coordinates and returns a canonicalized rectangle.
+func (w Window) Bounds() (image.Rectangle, error) {
+	r32 := rect32{}
+	ret, _, err := getWindowRect.Call(uintptr(w), uintptr(unsafe.Pointer(&r32)))
+	if ret == 0 {
+		return image.ZR, err
+	}
+	return r32.Rect(), nil
+}
+
+func (w Window) Reshape(r image.Rectangle) error {
+	return move(int(w), r, true)
+}
 
 var (
 	u32 = syscall.MustLoadDLL("user32.dll")
@@ -58,9 +117,11 @@ func (p point32) Point() image.Point {
 	return image.Point{X: int(p.X), Y: int(p.Y)}
 }
 func (r rect32) Rect() image.Rectangle {
-	return image.Rectangle{Min: r.Min.Point(), Max: r.Max.Point()}
+	r2 := image.Rectangle{Min: r.Min.Point(), Max: r.Max.Point()}.Canon()
+	return r2
 }
 
+/*
 func rect() (image.Rectangle, bool) {
 	r32 := rect32{}
 	ret, _, _ := getWindowRect.Call(active(), uintptr(unsafe.Pointer(&r32)))
@@ -74,14 +135,12 @@ func clientRect() (image.Rectangle, bool) {
 	return r32.Rect(), ok
 }
 func active() uintptr {
-	w := FromPID(os.Getpid())
+	w, err := FromPID(os.Getpid())
 	if len(w) == 0 {
 		return 0
 	}
 	return w[0]
 }
-
-/*
 func rect(wid int) image.Rectangle {
 	var r Rect
 	rp := uintptr(unsafe.Pointer(&r))
@@ -235,12 +294,18 @@ var callback = syscall.NewCallback(func(h syscall.Handle, p uintptr) uintptr {
 	return 1
 })
 
-func fromPID(pid int) (wids []uintptr) {
+func fromPID(pid int) (wids []uintptr, err error) {
 	b := &box{pid, make([]uintptr, 0, 1024)}
-	syscall.Syscall(pEnumWindows.Addr(), 2, callback, uintptr(unsafe.Pointer(b)), 0)
+	r0, _, e := pEnumWindows.Call(
+		callback,
+		uintptr(unsafe.Pointer(b)),
+	)
+	if r0 == 0 {
+		return nil, e
+	}
 	wids = make([]uintptr, len(b.wids))
 	copy(wids, b.wids)
-	return wids
+	return wids, nil
 }
 
 func SendMessage(h uintptr, msg uint, wp, lp uintptr) uintptr {
